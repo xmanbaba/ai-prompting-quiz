@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
-      --bg:#f7fbff;
+      --bg:#87CEEB;
       --card:#ffffff;
       --accent:#0b66ff;
       --muted:#6b7280;
@@ -18,13 +18,14 @@
       font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,var(--bg),#ffffff);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+    body{margin:0;background:var(--bg);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
     .container{width:100%;max-width:820px}
     .card{background:var(--card);border-radius:12px;box-shadow:0 6px 20px rgba(12,15,30,0.06);padding:28px}
     h1{margin:0 0 8px;font-size:20px}
     p.lead{margin:0 0 18px;color:var(--muted)}
     .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:600}
     .btn-primary{background:var(--accent);color:#fff}
+    .btn-success{background:var(--success);color:#fff}
     .btn-ghost{background:transparent;border:1px solid #e6eefb;color:var(--accent)}
     .form-row{display:flex;gap:12px;margin-bottom:12px}
     .input, .select{flex:1;padding:10px;border-radius:8px;border:1px solid #e6eefb}
@@ -44,6 +45,11 @@
     .qa{padding:12px;border-radius:8px;border:1px solid #f1f5f9;background:white}
     .meta{font-size:13px;color:var(--muted);margin-bottom:8px}
     footer{margin-top:12px;text-align:center;font-size:13px;color:var(--muted)}
+    .copyright{margin-top:20px;text-align:center;font-size:12px;color:var(--muted);padding-top:16px;border-top:1px solid #e6eefb}
+    .share-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center}
+    .share-modal.active{display:flex}
+    .share-content{background:white;padding:24px;border-radius:12px;max-width:500px;width:90%}
+    .share-link{background:#f8f9fa;padding:12px;border-radius:8px;word-break:break-all;margin:12px 0;font-size:14px}
     @media (max-width:640px){.form-row{flex-direction:column}}
   </style>
 </head>
@@ -63,11 +69,15 @@
       <!-- INSTRUCTIONS / FORM -->
       <div id="formWrap" style="display:none;margin-top:12px">
         <h2 style="font-size:16px;margin-bottom:6px">Enter your details</h2>
-        <p class="small">Please provide your full name and organisation. Date is auto-filled but editable.</p>
+        <p class="small">Please provide your full name, department, and organisation. Date is auto-filled but editable.</p>
         <div style="margin-top:12px">
           <div style="margin-bottom:10px">
             <label>Full name</label>
             <input id="fullName" class="input" placeholder="e.g. Jane Doe" />
+          </div>
+          <div style="margin-bottom:10px">
+            <label>Department</label>
+            <input id="department" class="input" placeholder="e.g. IT, HR, Finance" />
           </div>
           <div style="margin-bottom:10px">
             <label>Organisation</label>
@@ -117,18 +127,60 @@
           <div class="meta" id="resultMeta"></div>
           <div style="margin-top:8px;font-size:18px" id="scoreText"></div>
           <div class="answer-list" id="answerList"></div>
-          <div style="margin-top:14px">
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-primary" id="downloadBtn">Download Result as PDF</button>
+            <button class="btn btn-success" id="shareBtn">Share Result</button>
             <button class="btn" id="retakeBtn">Retake Quiz</button>
           </div>
         </div>
       </div>
 
-      <footer>
-        <div>Built for quick hosting on Vercel — open <code>index.html</code> and deploy.</div>
-      </footer>
+      <div class="copyright">
+        &copy; Copyright 2025 Suleiman Shaibu
+      </div>
     </div>
   </div>
+
+  <!-- Share Modal -->
+  <div class="share-modal" id="shareModal">
+    <div class="share-content">
+      <h3 style="margin-top:0">Share Quiz Result</h3>
+      <p>Share this link to show your quiz result (answers not included):</p>
+      <div class="share-link" id="shareLink"></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" id="copyLinkBtn">Copy Link</button>
+        <button class="btn" id="closeModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, addDoc, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    // Firebase configuration - REPLACE WITH YOUR CONFIG
+    const firebaseConfig = {
+  apiKey: "AIzaSyB2UgTnlToaG15CoUVfhHXON6wjo3pqVEA",
+  authDomain: "aipromptingquiz.firebaseapp.com",
+  projectId: "aipromptingquiz",
+  storageBucket: "aipromptingquiz.firebasestorage.app",
+  messagingSenderId: "801185668348",
+  appId: "1:801185668348:web:80230c6d458c7bd18fcb79",
+  measurementId: "G-V2YYR06KKX"
+};
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Make db available globally
+    window.firestoreDB = db;
+    window.firestoreCollection = collection;
+    window.firestoreAddDoc = addDoc;
+    window.firestoreDoc = doc;
+    window.firestoreGetDoc = getDoc;
+  </script>
 
   <!-- Libraries for PDF capture -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -159,6 +211,7 @@
     const answers = new Array(quiz.length).fill(null);
     let timerSeconds = 15 * 60; // 15 minutes
     let timerInterval = null;
+    let resultId = null;
 
     // DOM refs
     const intro = document.getElementById('intro');
@@ -168,6 +221,7 @@
     const beginBtn = document.getElementById('beginBtn');
     const backToIntro = document.getElementById('backToIntro');
     const fullName = document.getElementById('fullName');
+    const department = document.getElementById('department');
     const orgName = document.getElementById('orgName');
     const dateField = document.getElementById('dateField');
     const quizWrap = document.getElementById('quizWrap');
@@ -183,7 +237,12 @@
     const scoreText = document.getElementById('scoreText');
     const answerList = document.getElementById('answerList');
     const downloadBtn = document.getElementById('downloadBtn');
+    const shareBtn = document.getElementById('shareBtn');
     const retakeBtn = document.getElementById('retakeBtn');
+    const shareModal = document.getElementById('shareModal');
+    const shareLink = document.getElementById('shareLink');
+    const copyLinkBtn = document.getElementById('copyLinkBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
 
     // init
     (function setDate(){
@@ -192,10 +251,47 @@
       dateField.value = iso;
     })();
 
+    // Check if viewing shared result
+    (function checkSharedResult(){
+      const urlParams = new URLSearchParams(window.location.search);
+      const sharedId = urlParams.get('result');
+      if(sharedId){
+        loadSharedResult(sharedId);
+      }
+    })();
+
+    async function loadSharedResult(id){
+      try{
+        const docRef = window.firestoreDoc(window.firestoreDB, 'quizResults', id);
+        const docSnap = await window.firestoreGetDoc(docRef);
+        
+        if(docSnap.exists()){
+          const data = docSnap.data();
+          intro.style.display = 'none';
+          resultWrap.style.display = 'block';
+          
+          resultMeta.textContent = `${data.name} • ${data.department} • ${data.organisation} • ${data.date}`;
+          scoreText.textContent = `You scored ${data.score} out of ${data.totalQuestions}`;
+          answerList.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px">Detailed answers are not included in shared results.</p>';
+          
+          // Hide download and retake buttons for shared view
+          downloadBtn.style.display = 'none';
+          retakeBtn.style.display = 'none';
+          shareBtn.style.display = 'none';
+        } else {
+          alert('Result not found.');
+        }
+      } catch(err){
+        console.error('Error loading shared result:', err);
+        alert('Failed to load shared result: ' + err.message);
+      }
+    }
+
     startButton.addEventListener('click',()=>{
       intro.style.display='none';
       formWrap.style.display='block';
     });
+    
     instructionsBtn.addEventListener('click',()=>{
       alert('Instructions:\n- You will answer 15 questions in 15 minutes.\n- One question per page.\n- You can navigate back and forth.\n- Timer starts when you click "Begin Quiz".');
     });
@@ -207,16 +303,17 @@
 
     beginBtn.addEventListener('click',()=>{
       const name = fullName.value.trim();
+      const dept = department.value.trim();
       const org = orgName.value.trim();
       const date = dateField.value;
-      if(!name || !org){
-        alert('Please enter your full name and organisation before starting.');
+      if(!name || !dept || !org){
+        alert('Please enter your full name, department, and organisation before starting.');
         return;
       }
       // show quiz
       formWrap.style.display='none';
       quizWrap.style.display='block';
-      userMeta.textContent = `${name} • ${org} • ${date}`;
+      userMeta.textContent = `${name} • ${dept} • ${org} • ${date}`;
       startTimer();
       renderQuestion();
     });
@@ -226,6 +323,7 @@
       if(current>0) current--;
       renderQuestion();
     });
+    
     nextBtn.addEventListener('click',()=>{
       saveSelection();
       if(current < quiz.length-1) current++;
@@ -285,19 +383,21 @@
       timerEl.textContent = `${mm}:${ss}`;
     }
 
-    function finishQuiz(){
+    async function finishQuiz(){
       saveSelection();
       if(timerInterval) clearInterval(timerInterval);
       quizWrap.style.display='none';
       resultWrap.style.display='block';
-      renderResult();
+      await renderResult();
     }
 
-    function renderResult(){
+    async function renderResult(){
       const name = fullName.value.trim();
+      const dept = department.value.trim();
       const org = orgName.value.trim();
       const date = dateField.value;
-      resultMeta.textContent = `${name} • ${org} • ${date}`;
+      resultMeta.textContent = `${name} • ${dept} • ${org} • ${date}`;
+      
       let score = 0;
       answerList.innerHTML='';
       quiz.forEach((item,i)=>{
@@ -327,13 +427,77 @@
         answerList.appendChild(qa);
       });
       scoreText.textContent = `You scored ${score} out of ${quiz.length}`;
+
+      // Save to Firestore
+      try{
+        const docRef = await window.firestoreAddDoc(window.firestoreCollection(window.firestoreDB, 'quizResults'), {
+          name: name,
+          department: dept,
+          organisation: org,
+          date: date,
+          score: score,
+          totalQuestions: quiz.length,
+          testName: 'AI Prompting Introduction',
+          timestamp: new Date().toISOString(),
+          answers: answers.map((ans, idx) => ({
+            question: quiz[idx].q,
+            userAnswer: ans !== null ? quiz[idx].opts[ans] : null,
+            correctAnswer: quiz[idx].opts[quiz[idx].ans],
+            isCorrect: ans === quiz[idx].ans
+          }))
+        });
+        resultId = docRef.id;
+        console.log('Quiz result saved with ID:', resultId);
+      } catch(err){
+        console.error('Error saving to Firestore:', err);
+        alert('Note: Result could not be saved to database. Error: ' + err.message);
+      }
     }
+
+    // Share button
+    shareBtn.addEventListener('click', ()=>{
+      if(!resultId){
+        alert('Result ID not available. Please complete the quiz first.');
+        return;
+      }
+      const baseUrl = window.location.origin + window.location.pathname;
+      const shareUrl = `${baseUrl}?result=${resultId}`;
+      shareLink.textContent = shareUrl;
+      shareModal.classList.add('active');
+    });
+
+    copyLinkBtn.addEventListener('click', ()=>{
+      const linkText = shareLink.textContent;
+      navigator.clipboard.writeText(linkText).then(()=>{
+        alert('Link copied to clipboard!');
+      }).catch(()=>{
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = linkText;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Link copied to clipboard!');
+      });
+    });
+
+    closeModalBtn.addEventListener('click', ()=>{
+      shareModal.classList.remove('active');
+    });
+
+    shareModal.addEventListener('click', (e)=>{
+      if(e.target === shareModal){
+        shareModal.classList.remove('active');
+      }
+    });
 
     // download PDF
     downloadBtn.addEventListener('click', async ()=>{
       const el = document.getElementById('resultCard');
       // remove buttons temporarily
       downloadBtn.disabled = true;
+      shareBtn.disabled = true;
       retakeBtn.disabled = true;
       const { jsPDF } = window.jspdf;
       try{
@@ -353,6 +517,7 @@
         alert('Failed to generate PDF: '+err.message);
       }finally{
         downloadBtn.disabled = false;
+        shareBtn.disabled = false;
         retakeBtn.disabled = false;
       }
     });
@@ -363,6 +528,7 @@
       answers.fill(null);
       current = 0;
       timerSeconds = 15*60;
+      resultId = null;
       resultWrap.style.display='none';
       formWrap.style.display='block';
     });
