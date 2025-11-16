@@ -243,14 +243,15 @@
       dateField.value = iso;
     })();
 
-    // Check if viewing shared result
-    (async function checkSharedResult(){
-      const urlParams = new URLSearchParams(window.location.search);
-      const sharedId = urlParams.get('result');
-      if(sharedId){
-        await loadSharedResult(sharedId);
-      }
-    })();
+    // Check if viewing shared result - wait for Firebase to initialize
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedId = urlParams.get('result');
+    if(sharedId){
+      // Small delay to ensure Firebase is fully initialized
+      setTimeout(() => {
+        loadSharedResult(sharedId);
+      }, 500);
+    }
 
     async function loadSharedResult(id){
       try{
