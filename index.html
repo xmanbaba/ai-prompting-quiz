@@ -154,7 +154,11 @@
     </div>
   </div>
 
-  <!-- Firebase SDK -->
+  <!-- Libraries for PDF capture -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- Firebase SDK and Main Script -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
     import { getFirestore, collection, addDoc, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
@@ -174,20 +178,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Make db available globally
-    window.firestoreDB = db;
-    window.firestoreCollection = collection;
-    window.firestoreAddDoc = addDoc;
-    window.firestoreDoc = doc;
-    window.firestoreGetDoc = getDoc;
-  </script>
-
-  <!-- Libraries for PDF capture -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-  <script>
-    // Questions array built from user's content
+    // Questions array
     const quiz = [
       {q: 'What is a question prompt?', opts:['A) A prompt that tells the AI to do something specific','B) A prompt that asks a question to the AI','C) A prompt that starts a sentence for the AI to finish'], ans:1},
       {q: 'Which prompt type involves starting a sentence and letting the AI finish it?', opts:['A) Instruction prompt','B) Completion prompt','C) Comparison prompt'], ans:1},
@@ -206,10 +197,10 @@
       {q: 'What is the benefit of sharing your content written in your language and style with the LLM?', opts:['A) It will spot patterns and respond accordingly','B) It will ignore your style','C) It will change your writing style'], ans:0}
     ];
 
-    // state
+    // State
     let current = 0;
     const answers = new Array(quiz.length).fill(null);
-    let timerSeconds = 15 * 60; // 15 minutes
+    let timerSeconds = 15 * 60;
     let timerInterval = null;
     let resultId = null;
 
@@ -244,7 +235,7 @@
     const copyLinkBtn = document.getElementById('copyLinkBtn');
     const closeModalBtn = document.getElementById('closeModalBtn');
 
-    // init
+    // Initialize date
     (function setDate(){
       const today = new Date();
       const iso = today.toISOString().slice(0,10);
@@ -252,18 +243,18 @@
     })();
 
     // Check if viewing shared result
-    (function checkSharedResult(){
+    (async function checkSharedResult(){
       const urlParams = new URLSearchParams(window.location.search);
       const sharedId = urlParams.get('result');
       if(sharedId){
-        loadSharedResult(sharedId);
+        await loadSharedResult(sharedId);
       }
     })();
 
     async function loadSharedResult(id){
       try{
-        const docRef = window.firestoreDoc(window.firestoreDB, 'quizResults', id);
-        const docSnap = await window.firestoreGetDoc(docRef);
+        const docRef = doc(db, 'quizResults', id);
+        const docSnap = await getDoc(docRef);
         
         if(docSnap.exists()){
           const data = docSnap.data();
@@ -271,7 +262,7 @@
           resultWrap.style.display = 'block';
           
           resultMeta.textContent = `${data.name} • ${data.department} • ${data.organisation} • ${data.date}`;
-          scoreText.textContent = `You scored ${data.score} out of ${data.totalQuestions}`;
+          scoreText.innerHTML = `<strong>Test:</strong> ${data.testName}<br><strong>Score:</strong> ${data.score} out of ${data.totalQuestions}`;
           answerList.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px">Detailed answers are not included in shared results.</p>';
           
           // Hide download and retake buttons for shared view
@@ -310,7 +301,6 @@
         alert('Please enter your full name, department, and organisation before starting.');
         return;
       }
-      // show quiz
       formWrap.style.display='none';
       quizWrap.style.display='block';
       userMeta.textContent = `${name} • ${dept} • ${org} • ${date}`;
@@ -352,7 +342,6 @@
         });
         optionsBox.appendChild(div);
       });
-      // update nav button states
       prevBtn.disabled = current===0;
       nextBtn.disabled = current===quiz.length-1;
     }
@@ -410,14 +399,12 @@
         qh.innerHTML = `<strong>Q${i+1}.</strong> ${escapeHtml(item.q)}`;
         const details = document.createElement('div');
         details.style.marginTop='8px';
-        // user's answer text
         const uaText = (userAns===null) ? '<em>No answer</em>' : escapeHtml(item.opts[userAns]);
         const correctText = escapeHtml(item.opts[correct]);
         const ua = document.createElement('div');
         ua.innerHTML = `Your answer: ${uaText}`;
         const ca = document.createElement('div');
         ca.innerHTML = `Correct answer: ${correctText}`;
-        // style
         if(userAns === correct){ ua.className='correct'; ca.className='correct'; }
         else { ua.className='wrong'; ca.className='correct'; }
         details.appendChild(ua);
@@ -430,7 +417,7 @@
 
       // Save to Firestore
       try{
-        const docRef = await window.firestoreAddDoc(window.firestoreCollection(window.firestoreDB, 'quizResults'), {
+        const docRef = await addDoc(collection(db, 'quizResults'), {
           name: name,
           department: dept,
           organisation: org,
@@ -454,7 +441,6 @@
       }
     }
 
-    // Share button
     shareBtn.addEventListener('click', ()=>{
       if(!resultId){
         alert('Result ID not available. Please complete the quiz first.');
@@ -471,7 +457,6 @@
       navigator.clipboard.writeText(linkText).then(()=>{
         alert('Link copied to clipboard!');
       }).catch(()=>{
-        // Fallback for older browsers
         const textArea = document.createElement('textarea');
         textArea.value = linkText;
         document.body.appendChild(textArea);
@@ -492,10 +477,8 @@
       }
     });
 
-    // download PDF
     downloadBtn.addEventListener('click', async ()=>{
       const el = document.getElementById('resultCard');
-      // remove buttons temporarily
       downloadBtn.disabled = true;
       shareBtn.disabled = true;
       retakeBtn.disabled = true;
@@ -506,7 +489,6 @@
         const pdf = new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        // fit image to page while keeping aspect ratio
         const imgProps = { width: canvas.width, height: canvas.height };
         const ratio = Math.min(pageWidth / imgProps.width, pageHeight / imgProps.height);
         const imgWidth = imgProps.width * ratio;
@@ -524,7 +506,6 @@
 
     retakeBtn.addEventListener('click',()=>{
       if(!confirm('Retake quiz? This will clear your previous answers.')) return;
-      // reset state
       answers.fill(null);
       current = 0;
       timerSeconds = 15*60;
@@ -533,12 +514,10 @@
       formWrap.style.display='block';
     });
 
-    // small helper to escape HTML
     function escapeHtml(str){
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
-    // keyboard support: Enter to select next if an option is focused
     document.addEventListener('keydown',(e)=>{
       if(e.key === 'ArrowRight') { saveSelection(); if(current < quiz.length-1) { current++; renderQuestion(); } }
       if(e.key === 'ArrowLeft') { saveSelection(); if(current>0) { current--; renderQuestion(); } }
